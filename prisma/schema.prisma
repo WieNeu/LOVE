@@ -1,0 +1,120 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  BLOCKED
+}
+
+enum ModerationStatus {
+  APPROVED
+  PENDING
+  REJECTED
+  FLAGGED
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String?
+  publicName   String?
+  role         Role       @default(USER)
+  status       UserStatus @default(ACTIVE)
+  createdAt    DateTime   @default(now())
+  stories      Story[]
+  comments     Comment[]
+
+  @@map("users")
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  icon      String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  stories   Story[]
+
+  @@map("categories")
+}
+
+model Story {
+  id               String           @id @default(cuid())
+  authorUserId     String?
+  authorUser       User?            @relation(fields: [authorUserId], references: [id])
+  anonymousName    String
+  title            String
+  content          String
+  categoryId       String
+  category         Category         @relation(fields: [categoryId], references: [id])
+  contentWarning   String?
+  moderationStatus ModerationStatus @default(PENDING)
+  publishedAt      DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  likesCount       Int              @default(0)
+  commentsCount    Int              @default(0)
+  viewsCount       Int              @default(0)
+  isDemo           Boolean          @default(false)
+  comments         Comment[]
+  likes            Like[]
+  reports          Report[]
+
+  @@map("stories")
+}
+
+model Comment {
+  id               String           @id @default(cuid())
+  storyId          String
+  story            Story            @relation(fields: [storyId], references: [id])
+  authorUserId     String?
+  authorUser       User?            @relation(fields: [authorUserId], references: [id])
+  anonymousName    String
+  content          String
+  moderationStatus ModerationStatus @default(PENDING)
+  createdAt        DateTime         @default(now())
+  reports          Report[]
+
+  @@map("comments")
+}
+
+model Like {
+  id           String   @id @default(cuid())
+  storyId      String
+  story        Story    @relation(fields: [storyId], references: [id])
+  userSession  String?
+  userId       String?
+  createdAt    DateTime @default(now())
+
+  @@unique([storyId, userSession])
+  @@map("likes")
+}
+
+model Report {
+  id             String          @id @default(cuid())
+  storyId        String?
+  story          Story?          @relation(fields: [storyId], references: [id])
+  commentId      String?
+  comment        Comment?        @relation(fields: [commentId], references: [id])
+  reporterName   String?
+  reporterUserId String?
+  reason         String
+  description    String?
+  status         String          @default("OPEN")
+  createdAt      DateTime        @default(now())
+  resolvedAt     DateTime?
+
+  @@map("reports")
+}
